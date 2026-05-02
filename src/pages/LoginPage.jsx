@@ -12,30 +12,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function handleLogin() {
-    setMessage("");
+ async function handleAuth(email, password) {
+  setLoading(true);
+  setMessage("");
 
-    if (!email || !password) {
-      setMessage("Introduce tu email y contraseña.");
-      return;
-    }
+  // 1. intento login
+  const { error: loginError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    setLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+  if (!loginError) {
     setLoading(false);
-
-    if (error) {
-      setMessage("Email o contraseña incorrectos.");
-      return;
-    }
-
     navigate("/dashboard");
+    return;
   }
+
+  // 2. si falla → registro automático
+  const { error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  setLoading(false);
+
+  if (signUpError) {
+    setMessage(signUpError.message);
+    return;
+  }
+
+  setMessage("Cuenta creada. Revisa tu email para confirmar.");
+}
 
   return (
     <main style={styles.container}>

@@ -7,42 +7,100 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
- async function handleAuth(email, password) {
-  setLoading(true);
-  setMessage("");
+  async function handleLogin(e) {
+    e.preventDefault();
 
-  // 1. intento login
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+    setLoading(true);
+    setMessage("");
 
-  if (!loginError) {
+    if (!email.trim() || !password.trim()) {
+      setMessage("Introduce email y contraseña.");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
     setLoading(false);
+
+    if (error) {
+      setMessage("Email o contraseña incorrectos.");
+      return;
+    }
+
     navigate("/dashboard");
-    return;
   }
 
-  // 2. si falla → registro automático
-  const { error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
-  });
+  async function handleRegister(e) {
+    e.preventDefault();
 
-  setLoading(false);
+    setLoading(true);
+    setMessage("");
 
-  if (signUpError) {
-    setMessage(signUpError.message);
-    return;
+    if (!email.trim() || !password.trim()) {
+      setMessage("Introduce email y contraseña.");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessage("La contraseña debe tener al menos 6 caracteres.");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Cuenta creada. Revisa tu email para confirmar.");
   }
 
-  setMessage("Cuenta creada. Revisa tu email para confirmar.");
-}
+  async function handlePasswordRecovery() {
+    setLoading(true);
+    setMessage("");
+
+    if (!email.trim()) {
+      setMessage("Introduce tu email para recuperar la contraseña.");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }
+    );
+
+    setLoading(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Te hemos enviado un email para cambiar la contraseña.");
+  }
 
   return (
     <main style={styles.container}>
@@ -51,77 +109,71 @@ export default function LoginPage() {
           ← Volver
         </button>
 
-        <div style={styles.brand}>
-          <div style={styles.logo}>CH</div>
-          <div>
-            <h1 style={styles.brandTitle}>ControlHuesped</h1>
-            <p style={styles.brandText}>Acceso seguro para propietarios</p>
-          </div>
-        </div>
+        <div style={styles.badge}>CONTROLHUESPED PRO</div>
 
-        <h2 style={styles.title}>Acceder</h2>
+        <h1 style={styles.title}>Accede a tu panel</h1>
 
         <p style={styles.subtitle}>
-          Entra a tu panel para gestionar alojamientos, reservas y huéspedes.
+          Gestiona alojamientos, reservas, huéspedes y enlaces de check-in desde
+          un solo lugar.
         </p>
 
-        <form style={styles.form}>
-          <label style={styles.label}>Correo electrónico</label>
+        <form style={styles.form} onSubmit={handleLogin}>
+          <label style={styles.label}>Email</label>
           <input
+            style={styles.input}
             type="email"
             placeholder="tu@email.com"
-            style={styles.input}
             value={email}
+            autoComplete="email"
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <label style={styles.label}>Contraseña</label>
+
           <div style={styles.passwordBox}>
             <input
+              style={styles.passwordInput}
               type={showPassword ? "text" : "password"}
               placeholder="Tu contraseña"
-              style={styles.passwordInput}
               value={password}
+              autoComplete="current-password"
               onChange={(e) => setPassword(e.target.value)}
             />
 
             <button
               type="button"
-              style={styles.eye}
+              style={styles.eyeButton}
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? "🙈" : "👁️"}
+              {showPassword ? "Ocultar" : "Ver"}
             </button>
           </div>
 
           {message && <p style={styles.message}>{message}</p>}
 
-          <button
-            type="button"
-            style={styles.primaryButton}
-            onClick={handleLogin}
-            disabled={loading}
-          >
+          <button style={styles.primaryButton} type="submit" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </button>
-        </form>
 
-        <div style={styles.footer}>
-          <button type="button" style={styles.linkButton}>
-            He olvidado mi contraseña
+          <button
+            style={styles.secondaryButton}
+            type="button"
+            onClick={handleRegister}
+            disabled={loading}
+          >
+            Crear cuenta nueva
           </button>
 
-          <p style={styles.registerText}>
-            ¿Todavía no tienes cuenta?{" "}
-            <button
-              type="button"
-              style={styles.inlineLink}
-              onClick={() => navigate("/register")}
-            >
-              Crear cuenta
-            </button>
-          </p>
-        </div>
+          <button
+            style={styles.linkButton}
+            type="button"
+            onClick={handlePasswordRecovery}
+            disabled={loading}
+          >
+            He olvidado mi contraseña
+          </button>
+        </form>
       </section>
     </main>
   );
@@ -131,179 +183,147 @@ const styles = {
   container: {
     minHeight: "100vh",
     background:
-      "radial-gradient(circle at top left, #1e40af 0%, #0f172a 35%, #020617 100%)",
+      "radial-gradient(circle at top left, rgba(37,99,235,0.25), transparent 35%), #020617",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "24px",
     color: "white",
-    fontFamily: "Arial, sans-serif",
+    fontFamily:
+      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Arial",
   },
 
   card: {
     width: "100%",
-    maxWidth: "440px",
-    background: "rgba(15, 23, 42, 0.88)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: "24px",
-    padding: "28px",
-    boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
-    backdropFilter: "blur(18px)",
+    maxWidth: "480px",
+    background: "rgba(15, 23, 42, 0.96)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "28px",
+    padding: "30px",
+    boxShadow: "0 30px 90px rgba(0,0,0,0.45)",
   },
 
   backButton: {
     background: "transparent",
     border: "none",
-    color: "#cbd5e1",
+    color: "#93c5fd",
+    fontWeight: "800",
     cursor: "pointer",
-    fontSize: "14px",
     marginBottom: "24px",
   },
 
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    marginBottom: "28px",
-  },
-
-  logo: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "16px",
-    background: "linear-gradient(135deg, #3b82f6, #22c55e)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+  badge: {
+    display: "inline-block",
+    padding: "8px 12px",
+    borderRadius: "999px",
+    background: "rgba(37,99,235,0.18)",
+    border: "1px solid rgba(96,165,250,0.3)",
+    color: "#bfdbfe",
+    fontSize: "12px",
     fontWeight: "900",
-  },
-
-  brandTitle: {
-    margin: 0,
-    fontSize: "20px",
-  },
-
-  brandText: {
-    margin: "4px 0 0",
-    color: "#94a3b8",
-    fontSize: "13px",
+    letterSpacing: "0.08em",
+    marginBottom: "14px",
   },
 
   title: {
     margin: "0 0 10px",
-    fontSize: "30px",
-    letterSpacing: "-0.03em",
+    fontSize: "34px",
+    letterSpacing: "-0.05em",
   },
 
   subtitle: {
     margin: "0 0 26px",
-    color: "#cbd5e1",
-    lineHeight: 1.6,
-    fontSize: "15px",
+    color: "#94a3b8",
+    lineHeight: 1.5,
   },
 
   form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
+    display: "grid",
+    gap: "12px",
   },
 
   label: {
-    fontSize: "13px",
-    color: "#e2e8f0",
-    fontWeight: "700",
-    marginTop: "8px",
+    color: "#cbd5e1",
+    fontWeight: "800",
+    fontSize: "14px",
   },
 
   input: {
     width: "100%",
     boxSizing: "border-box",
-    padding: "14px 15px",
-    borderRadius: "14px",
+    padding: "15px",
+    borderRadius: "16px",
     border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(2, 6, 23, 0.7)",
+    background: "#0f172a",
     color: "white",
     outline: "none",
     fontSize: "15px",
   },
 
   passwordBox: {
-    position: "relative",
-    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    borderRadius: "16px",
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#0f172a",
+    overflow: "hidden",
   },
 
   passwordInput: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "14px 48px 14px 15px",
-    borderRadius: "14px",
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(2, 6, 23, 0.7)",
+    flex: 1,
+    minWidth: 0,
+    padding: "15px",
+    border: "none",
+    background: "transparent",
     color: "white",
     outline: "none",
     fontSize: "15px",
   },
 
-  eye: {
-    position: "absolute",
-    right: "12px",
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "transparent",
+  eyeButton: {
     border: "none",
+    background: "rgba(255,255,255,0.06)",
+    color: "#bfdbfe",
+    padding: "15px",
     cursor: "pointer",
-    fontSize: "17px",
+    fontWeight: "800",
   },
 
   message: {
-    margin: "12px 0 0",
-    color: "#bfdbfe",
-    background: "rgba(37, 99, 235, 0.16)",
-    border: "1px solid rgba(96, 165, 250, 0.22)",
-    padding: "12px",
-    borderRadius: "14px",
-    fontSize: "14px",
-    lineHeight: 1.5,
+    margin: "4px 0",
+    color: "#fde68a",
+    lineHeight: 1.4,
   },
 
   primaryButton: {
-    width: "100%",
-    marginTop: "18px",
+    marginTop: "6px",
     padding: "15px",
-    borderRadius: "14px",
+    borderRadius: "16px",
     border: "none",
     background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
     color: "white",
-    fontWeight: "800",
+    fontWeight: "900",
     cursor: "pointer",
     fontSize: "15px",
-    boxShadow: "0 16px 35px rgba(37, 99, 235, 0.35)",
   },
 
-  footer: {
-    marginTop: "22px",
-    textAlign: "center",
+  secondaryButton: {
+    padding: "15px",
+    borderRadius: "16px",
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.05)",
+    color: "white",
+    fontWeight: "900",
+    cursor: "pointer",
+    fontSize: "15px",
   },
 
   linkButton: {
-    background: "transparent",
     border: "none",
+    background: "transparent",
     color: "#93c5fd",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-
-  registerText: {
-    marginTop: "18px",
-    color: "#cbd5e1",
-    fontSize: "14px",
-  },
-
-  inlineLink: {
-    background: "transparent",
-    border: "none",
-    color: "#60a5fa",
     fontWeight: "800",
     cursor: "pointer",
+    padding: "8px",
   },
 };

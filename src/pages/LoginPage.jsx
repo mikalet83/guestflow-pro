@@ -7,7 +7,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -105,7 +104,7 @@ export default function LoginPage() {
   return (
     <main style={styles.container}>
       <section style={styles.card}>
-        <button style={styles.backButton} onClick={() => navigate("/")}>
+        <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
           ← Volver
         </button>
 
@@ -144,7 +143,7 @@ export default function LoginPage() {
             <button
               type="button"
               style={styles.eyeButton}
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((value) => !value)}
             >
               {showPassword ? "Ocultar" : "Ver"}
             </button>
